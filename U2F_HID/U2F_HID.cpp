@@ -10,6 +10,8 @@
 */
 
 /*
+ * Simple dump of if descriptors : sudo usbhid-dump
+ *
  * Debugging communication between U2F and PC : using libu2f-host (as root!)
  * - curl 'https://demo.yubico.com/wsapi/u2f/enroll?username=jas&password=foo' > foo
  * - u2f-host --debug -aregister < foo
