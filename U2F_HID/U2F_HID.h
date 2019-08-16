@@ -5,7 +5,7 @@
 #include "PluggableUSB.h"
 
 #define ENDPOINT_OUT pluggedEndpoint
-#define ENDPOINT_IN  ((uint8_t) (pluggedEndpoint+1))
+#define ENDPOINT_IN ((uint8_t) (pluggedEndpoint+1))
 
 #define HID_TX_SIZE 0x40
 #define HID_RX_SIZE 0x40
@@ -70,6 +70,7 @@ public:
   U2F_HID_(void);
   int begin(void);
   int SendReport(uint8_t id, const void* data, int len);
+  int RecvRaw(void *data);
 
 private:
   uint8_t epType[2];

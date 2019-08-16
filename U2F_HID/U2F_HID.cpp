@@ -1,39 +1,52 @@
 /*
+ * Note: this code isn't working :)
+ *
  * Resources : 
  * FIDO U2F HID spec: https://fidoalliance.org/specs/fido-u2f-v1.0-ps-20141009/fido-u2f-hid-protocol-ps-20141009.html
- * RawHID from NicoHood: https://github.com/NicoHood/HID/blob/master/src/SingleReport/RawHID.cpp
  * PluggableUSB API from Arduino: https://github.com/arduino/Arduino/wiki/PluggableUSB-and-PluggableHID-howto
  * Existing U2F implementation on a Teensy: https://github.com/yohanes/teensy-u2f/blob/master/usb_desc.h
  * MIDIUSB from Arduino: https://github.com/arduino-libraries/MIDIUSB
+ * device discovery implemented by libu2fhost : https://github.com/Yubico/libu2f-host/blob/master/u2f-host/devs.c#L395
 */
 
+/*
+ * Debugging communication between U2F and PC : using libu2f-host (as root!)
+ * - curl 'https://demo.yubico.com/wsapi/u2f/enroll?username=jas&password=foo' > foo
+ * - u2f-host --debug -aregister < foo
+ *
+ * Packet analyser for USB : wireshark, after modprobe usbmon
+ *
+ */
 
 #include "U2F_HID.h"
 
+
+// Magic values from https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/u2fd/u2fhid.cc
+
 static const uint8_t _hidReportDescriptor[] PROGMEM = {
-        0x06, lowByte(HID_USAGE_PAGE), highByte(HID_USAGE_PAGE),
-        0x0A, lowByte(HID_USAGE), highByte(HID_USAGE),
-
-        0xA1, 0x01,                  /* Collection 0x01 */
-        0x75, 0x08,                  /* report size = 8 bits */
-        0x15, 0x00,                  /* logical minimum = 0 */
-        0x26, 0xFF, 0x00,            /* logical maximum = 255 */
-
-        0x95, HID_TX_SIZE,        /* report count TX */
-        0x09, 0x01,                  /* usage */
-        0x81, 0x02,                  /* Input (array) */
-
-        0x95, HID_RX_SIZE,        /* report count RX */
-        0x09, 0x02,                  /* usage */
-        0x91, 0x02,                  /* Output (array) */
-        0xC0                         /* end collection */	
+    0x06, 0xD0, 0xF1, /* Usage Page (FIDO Alliance), FIDO_USAGE_PAGE */
+    0x09, 0x01,       /* Usage (U2F HID Auth. Device) FIDO_USAGE_U2FHID */
+    0xA1, 0x01,       /* Collection (Application), HID_APPLICATION */
+    0x09, 0x20,       /*  Usage (Input Report Data), FIDO_USAGE_DATA_IN */
+    0x15, 0x00,       /*  Logical Minimum (0) */
+    0x26, 0xFF, 0x00, /*  Logical Maximum (255) */
+    0x75, 0x08,       /*  Report Size (8) */
+    0x95, 0x40,       /*  Report Count (64), HID_INPUT_REPORT_BYTES */
+    0x81, 0x02,       /*  Input (Data, Var, Abs), Usage */
+    0x09, 0x21,       /*  Usage (Output Report Data), FIDO_USAGE_DATA_OUT */
+    0x15, 0x00,       /*  Logical Minimum (0) */
+    0x26, 0xFF, 0x00, /*  Logical Maximum (255) */
+    0x75, 0x08,       /*  Report Size (8) */
+    0x95, 0x40,       /*  Report Count (64), HID_OUTPUT_REPORT_BYTES */
+    0x91, 0x02,       /*  Output (Data, Var, Abs), Usage */
+    0xC0              /* End Collection */
 };
 
 U2F_HID_ U2F_HID;
 
 U2F_HID_::U2F_HID_(void) : PluggableUSBModule(2, 2, epType) {
-	epType[0] = EP_TYPE_INTERRUPT_OUT;
-	epType[1] = EP_TYPE_INTERRUPT_IN;
+i	epType[0] = EP_TYPE_INTERRUPT_OUT; // TX, OUT from the point of view of the host
+	epType[1] = EP_TYPE_INTERRUPT_IN; // RX, IN from the point of view of the host
 	PluggableUSB().plug(this);
 }
 
@@ -85,5 +98,9 @@ int U2F_HID_::SendReport(uint8_t id, const void* data, int len)
 	uint8_t p[64];
 	p[0] = id;
 	memcpy(&p[1], data, len);
-	return USB_Send(pluggedEndpoint, p, len+1);
+	return USB_Send(ENDPOINT_IN, p, len+1);
+}
+
+int U2F_HID_::RecvRaw(void *data) {
+	return USB_Recv(ENDPOINT_OUT, &data, HID_RX_SIZE);
 }
