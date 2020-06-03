@@ -24,15 +24,8 @@ void dump(String d, uint8_t *p, uint8_t len) {
 void initChannel(U2FHID_INIT_REQ *req) {
   //dump("nonce", req->nonce, 8);
   uint32_t cid = 0xcafebabe;
-  U2FHID_INIT_RESP r = {
-    0,
-    cid,
-    0,
-    0,
-    0,
-    0,
-    0
-  };
+  U2FHID_INIT_RESP r = {0};
+  memcpy(&(r.cid), &cid, 4);
   memcpy(&(r.nonce), req->nonce, 8);
 
   U2FHID_FRAME f = { CID_BROADCAST };
