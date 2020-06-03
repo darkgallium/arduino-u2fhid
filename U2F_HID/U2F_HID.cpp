@@ -47,7 +47,7 @@ static const uint8_t _hidReportDescriptor[] PROGMEM = {
 U2F_HID_ U2F_HID;
 
 U2F_HID_::U2F_HID_(void) : PluggableUSBModule(2, 2, epType) {
-i	epType[0] = EP_TYPE_INTERRUPT_OUT; // TX, OUT from the point of view of the host
+	epType[0] = EP_TYPE_INTERRUPT_OUT; // TX, OUT from the point of view of the host
 	epType[1] = EP_TYPE_INTERRUPT_IN; // RX, IN from the point of view of the host
 	PluggableUSB().plug(this);
 }
@@ -95,14 +95,10 @@ uint8_t U2F_HID_::getShortName(char* name) {
 	return 6;
 }
 
-int U2F_HID_::SendReport(uint8_t id, const void* data, int len)
-{
-	uint8_t p[64];
-	p[0] = id;
-	memcpy(&p[1], data, len);
-	return USB_Send(ENDPOINT_IN, p, len+1);
+int U2F_HID_::SendReport(void* data) {
+	return USB_Send(ENDPOINT_IN, data, HID_TX_SIZE);
 }
 
 int U2F_HID_::RecvRaw(void *data) {
-	return USB_Recv(ENDPOINT_OUT, &data, HID_RX_SIZE);
+	return USB_Recv(ENDPOINT_OUT, data, HID_RX_SIZE);
 }
