@@ -159,4 +159,76 @@ typedef struct {
   uint8_t nonce;                        // Client application nonce
 } U2FHID_SYNC_RESP;
 
+// https://github.com/google/tock-on-titan/blob/master/userspace/u2f_app/include/u2f.h
+
+typedef struct {
+        uint8_t ins;
+        uint8_t p1;
+        uint8_t p2;
+        uint16_t len;
+        uint8_t *data;
+} APDU;
+
+#define U2F_SW_NO_ERROR                 0x9000
+#define U2F_SW_INS_NOT_SUPPORTED        0x6D00
+#define U2F_SW_CONDITIONS_NOT_SATISFIED 0x6985
+#define U2F_SW_WRONG_DATA               0x6A80
+
+#define MAX_ECDSA_SIG_SIZE  72  // asn1 DER format
+#define MAX_KH_SIZE  128  // key handle
+#define MAX_CERT_SIZE  2048  // attestation certificate
+
+#define U2F_APPID_SIZE  32
+#define U2F_NONCE_SIZE  32
+
+// U2Fv2 instructions
+
+#define U2F_INS_REGISTER  0x01
+#define U2F_INS_AUTHENTICATE  0x02
+#define U2F_INS_VERSION  0x03
+
+// U2F_REGISTER instruction defines
+
+#define U2F_REGISTER_ID  0x05  // magic constant
+#define U2F_REGISTER_HASH_ID  0x00  // magic constant
+
+typedef struct {
+  uint8_t nonce[U2F_NONCE_SIZE];
+  uint8_t appId[U2F_APPID_SIZE];
+} U2F_REGISTER_REQ;
+
+typedef struct {
+  uint8_t registerId;
+  void* pubKey;
+  uint8_t keyHandleLen;
+  uint8_t keyHandleCertSig[
+      MAX_KH_SIZE +
+      MAX_CERT_SIZE +
+      MAX_ECDSA_SIG_SIZE];
+} U2F_REGISTER_RESP;
+
+// U2F_AUTHENTICATE instruction defines
+
+// Authentication parameter byte
+#define U2F_AUTH_ENFORCE  0x03  // Require user presence
+#define U2F_AUTH_CHECK_ONLY  0x07  // Test but do not consume
+
+typedef struct {
+  uint8_t nonce[U2F_NONCE_SIZE];
+  uint8_t appId[U2F_APPID_SIZE];
+  uint8_t keyHandleLen;
+  uint8_t keyHandle[MAX_KH_SIZE];
+} U2F_AUTHENTICATE_REQ;
+
+// Flags values
+#define U2F_TOUCHED  0x01
+#define U2F_ALTERNATE_INTERFACE  0x02
+#define U2F_CTR_SIZE 4
+
+typedef struct {
+  uint8_t flags;
+  uint8_t ctr[U2F_CTR_SIZE];
+  uint8_t sig[MAX_ECDSA_SIG_SIZE];
+} U2F_AUTHENTICATE_RESP;
+
 #endif

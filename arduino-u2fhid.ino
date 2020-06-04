@@ -1,6 +1,9 @@
 #include <U2F_HID.h>
 #include <string.h>
 
+// U2F MSG spec: https://fidoalliance.org/specs/fido-u2f-v1.0-ps-20141009/fido-u2f-raw-message-formats-ps-20141009.html
+// Google's implem : https://github.com/google/tock-on-titan/blob/master/userspace/u2f_app/u2f.c
+
 void setup() {
   Serial.begin(9600);
   while (!Serial);
@@ -21,9 +24,43 @@ void dump(String d, uint8_t *p, uint8_t len) {
   Serial.println();
 }
 
+void U2F_Register(APDU *p) {
+  
+}
+
+void handleU2Fmsg(uint8_t *m, uint8_t len) {
+  // CLA : always 0x0?
+  APDU p = {
+    .ins = m[1],
+    .p1 = m[2],
+    .p2 = m[3],
+    .len = 0,
+    .data = m + 5
+  };
+
+  /* ISO7618 LC decoding */
+  if (len >= 5) {
+    p.len = m[4];
+  } if (p.len == 0 && len >= 7) {
+    p.len = (m[5] << 8) | m[6];
+    p.data += 2;
+  }
+
+  switch (p.ins) {
+    case (U2F_INS_REGISTER):
+      Serial.print("u2f: register");
+      U2F_Register(&p);
+      break;
+    default:
+      Serial.print("u2f: not implemented");
+      break;
+  }
+  
+}
+
 void initChannel(U2FHID_INIT_REQ *req) {
   //dump("nonce", req->nonce, 8);
-  uint32_t cid = 0xcafebabe;
+  uint32_t cid = 0xcafebabe; //todo: implement multi channel support
   U2FHID_INIT_RESP r = {0};
   memcpy(&(r.cid), &cid, 4);
   memcpy(&(r.nonce), req->nonce, 8);
@@ -38,15 +75,12 @@ void initChannel(U2FHID_INIT_REQ *req) {
 }
 
 void handlePing() {
-  U2FHID_FRAME f = { p->cid };
-  f.type = U2FHID_PING;
-  f.init.bcntl = p->init.bcntl;
-  memcpy(&(f.init.data), p->init.data, p->init.bcntl);
-  
+  U2FHID_FRAME f = { 0 };
+  memcpy(&f, p, sizeof(U2FHID_FRAME)); 
   U2F_HID.SendReport(&f);
 }
 
-void handleMessage() {
+void unpackMessage() {
   uint8_t size = p->init.bcntl;
   uint8_t data[(size/64)+64] = {0};
   uint8_t expectedSeq = 0;
@@ -68,6 +102,7 @@ void handleMessage() {
   }
 
   dump("msg dump", data, size);
+  handleU2Fmsg(data, size);
 }
 
 void handlePacket() {
@@ -76,7 +111,7 @@ void handlePacket() {
   switch (p->init.cmd) {
     case U2FHID_MSG:
       Serial.write("type: msg\n");
-      handleMessage();
+      handleHIDMessage();
       break;
     case U2FHID_INIT:
       Serial.write("type: init\n");
@@ -96,8 +131,8 @@ void loop() {
   U2F_HID.begin();
   memset(p, 0, sizeof(U2FHID_FRAME));
   if(U2F_HID.RecvRaw(p) > 0) {
-    dump("recv", (uint8_t*)p, 64);
+    //dump("recv", (uint8_t*)p, 64);
     //memcpy(&f,p,64);
-    handlePacket();
+    unpackMessage();
   }
 }
