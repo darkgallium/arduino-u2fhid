@@ -48,7 +48,7 @@ void handlePing() {
 
 void handleMessage() {
   uint8_t size = p->init.bcntl;
-  uint8_t data[(size%64)+64] = {0};
+  uint8_t data[(size/64)+64] = {0};
   uint8_t expectedSeq = 0;
   uint8_t sz; 
 
@@ -61,7 +61,7 @@ void handleMessage() {
     
     for (sz = 57; sz < size; sz += 59) {
         while(U2F_HID.RecvRaw(&f) <= 0);
-        //assert that it is a continuation
+        // assert that it is a continuation
         // assert f.cont.seq == expectedseq
         memcpy(data+sz, f.cont.data, 59);
     }
