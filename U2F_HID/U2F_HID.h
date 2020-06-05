@@ -199,12 +199,11 @@ typedef struct {
 
 typedef struct {
   uint8_t registerId;
-  void* pubKey;
+  uint8_t pubKey[65];
   uint8_t keyHandleLen;
-  uint8_t keyHandleCertSig[
-      MAX_KH_SIZE +
-      MAX_CERT_SIZE +
-      MAX_ECDSA_SIG_SIZE];
+  uint8_t keyHandle[32];
+  uint8_t attestationCert[MAX_CERT_SIZE];
+  uint8_t signature[MAX_ECDSA_SIG_SIZE];
 } U2F_REGISTER_RESP;
 
 // U2F_AUTHENTICATE instruction defines
